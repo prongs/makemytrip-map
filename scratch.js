@@ -20,7 +20,7 @@ map_div.style.width = "62%";
 map_div.style.height = "100%";
 overlay_div.childNodes[1].width = "38%";
 overlay_div.childNodes[1].height = "100%";
-overlay_div.childNodes[1].style.float = "left"
+overlay_div.childNodes[1].style.float = "left";
 map_div.style.float = "right";
 map_div.innerHTML = "    <link href=\"https://google-developers.appspot.com/maps/documentation/javascript/examples/default.css\" rel=\"stylesheet\">    <div id=\"map_canvas\"></div>";
 overlay_div.appendChild(map_div);
@@ -31,8 +31,10 @@ function getPlaces() {
 	ret = [];
 	for(var i = 0; i < rows.length; i++) {
 		var r = rows[i];
-		var searchTerm = r.childNodes[3].childNodes[1].childNodes[0].nodeValue.trim() + r.childNodes[3].childNodes[2].nodeValue.trim();
-		ret.push({searchTerm:searchTerm});
+		var searchTerm = r.childNodes[3].childNodes[1].childNodes[0].nodeValue.trim() + " " + r.childNodes[3].childNodes[2].nodeValue.trim();
+		ret.push({
+			searchTerm: searchTerm
+		});
 	}
 	return ret;
 }
@@ -52,43 +54,40 @@ function initialize() {
 	new google.maps.LatLng(37.772323, -122.214897), new google.maps.LatLng(21.291982, -157.821856), new google.maps.LatLng(-18.142599, 178.431), new google.maps.LatLng(-27.46758, 153.027892)];
 	flightPlanCoordinates = []
 	places = getPlaces()
-	var done =0;
-	for (var i = 0; i < places.length; i++) {
-		geocoder.geocode({
-			'address': places[i].searchTerm
-		}, function(results, status) {
-			alert(status);
-			if(status == google.maps.GeocoderStatus.OK) {
-				//map.setCenter(results[0].geometry.location);
-				var marker = new google.maps.Marker({
-					map: map,
-					position: results[0].geometry.location
-				});
-				done++;
-				if(done==places.length)
-				{
-					var flightPath = new google.maps.Polyline({
-						path: flightPlanCoordinates,
-						strokeColor: '#FF0000',
-						strokeOpacity: 1.0,
-						strokeWeight: 2
+	var done = 0;
+	for(var i = 0; i < places.length; i++) {
+		setTimeout(
+			function(){
+				geocoder.geocode({
+				'address': places[i].searchTerm
+				}, function(results, status) {
+				alert(status);
+				alert(i);
+				alert(places[i])
+				if(status == google.maps.GeocoderStatus.OK) {
+					map.setCenter(results[0].geometry.location);
+					var marker = new google.maps.Marker({
+						map: map,
+						animation: google.maps.Animation.DROP,
+						position: results[0].geometry.location
 					});
+					done++;
+					if(done == places.length) {
+						var flightPath = new google.maps.Polyline({
+							path: flightPlanCoordinates,
+							strokeColor: '#FF0000',
+							strokeOpacity: 1.0,
+							strokeWeight: 2
+						});
 
-					flightPath.setMap(map);					
+						flightPath.setMap(map);
+					}
+
 				}
-
-			}
-		});
+		});}, i*1000);
 	};
 
 }
-
-
-
-
-
-
-
 
 
 
