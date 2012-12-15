@@ -1,11 +1,10 @@
 function getByClass(className, parent) {
-	parent || (parent = document);
+	parent = parent || (document);
 	var descendants = parent.getElementsByTagName('*'),
 		i = -1,
 		e, result = [];
-	while(e = descendants[++i]) {
-		((' ' + (e['class'] || e.className) + ' ').indexOf(' ' + className + ' ') > -1) && result.push(e);
-	}
+	while((e = descendants[++i]))
+	if((' ' + (e['class'] || e.className) + ' ').indexOf(' ' + className + ' ') > -1) result.push(e);
 	return result;
 }
 
@@ -31,18 +30,23 @@ function getPlaces() {
 	ret = [];
 	for(var i = 0; i < rows.length; i++) {
 		var r = rows[i];
-		var searchTerm = r.childNodes[3].childNodes[1].childNodes[0].nodeValue.trim() + " " + r.childNodes[3].childNodes[2].nodeValue.trim();
+		var a = r.childNodes[3].childNodes[1].childNodes[0].nodeValue.trim();
+		if(a.substr(a.length - 2) == 'Jn') a = a.substr(0, a.length - 2);
+		var term1 = a + " " + r.childNodes[3].childNodes[2].nodeValue.trim();
 		ret.push({
-			searchTerm: searchTerm
+			searchTerms: [a, term1, a + " Junction", a + "Railway Station"],
+			primary: 0
 		});
 	}
 	return ret;
 }
 
+
+
 function initialize() {
 	var myLatLng = new google.maps.LatLng(0, -180);
 	var mapOptions = {
-		zoom: 3,
+		zoom: 6,
 		center: myLatLng,
 		mapTypeId: google.maps.MapTypeId.TERRAIN
 	};
@@ -52,40 +56,51 @@ function initialize() {
 	var place_service = new google.maps.places.PlacesService(map);
 	var flightPlanCoordinates = [
 	new google.maps.LatLng(37.772323, -122.214897), new google.maps.LatLng(21.291982, -157.821856), new google.maps.LatLng(-18.142599, 178.431), new google.maps.LatLng(-27.46758, 153.027892)];
-	flightPlanCoordinates = []
-	places = getPlaces()
+	flightPlanCoordinates = [];
+	var places = getPlaces();
 	var done = 0;
-	for(var i = 0; i < places.length; i++) {
-		setTimeout(
-			function(){
-				geocoder.geocode({
-				'address': places[i].searchTerm
-				}, function(results, status) {
-				alert(status);
-				alert(i);
-				alert(places[i])
-				if(status == google.maps.GeocoderStatus.OK) {
-					map.setCenter(results[0].geometry.location);
-					var marker = new google.maps.Marker({
-						map: map,
-						animation: google.maps.Animation.DROP,
-						position: results[0].geometry.location
-					});
-					done++;
-					if(done == places.length) {
-						var flightPath = new google.maps.Polyline({
-							path: flightPlanCoordinates,
-							strokeColor: '#FF0000',
-							strokeOpacity: 1.0,
-							strokeWeight: 2
-						});
+	var t = 1;
+	var flightPath = null;
 
-						flightPath.setMap(map);
-					}
-
+	function geocode_next_place() {
+		if(done == places.length) {
+			flightPath = new google.maps.Polyline({
+				path: flightPlanCoordinates,
+				strokeColor: '#FF0000',
+				strokeOpacity: 1.0,
+				strokeWeight: 2
+			});
+			flightPath.setMap(map);
+		}
+		geocoder.geocode({
+			'address': places[done].searchTerms[places[done].primary],
+			'region': 'in'
+		}, function(result, status) {
+			if(status == google.maps.GeocoderStatus.OK) {
+				var marker = new google.maps.Marker({
+					map: map,
+					animation: google.maps.Animation.DROP,
+					position: result[0].geometry.location,
+					title: places[done].searchTerms[places[done].primary]
+				});
+				map.setCenter(result[0].geometry.location);
+				flightPlanCoordinates[done] = result[0].geometry.location;
+				done++;
+				t = 0;
+			} else {
+				if(status == google.maps.GeocoderStatus.OVER_QUERY_LIMIT) {
+					// alert("done= " + done + ", geocode_next_place call, search term = " + places[done].searchTerms[places[done].primary]);
+					// alert(status);
+					t = Math.min(20, 2 * t + 1);
+				} else places[done].primary++;
+				if(places[done].primary == places[done].searchTerms.length) {
+					alert("Could not find " + places[done].searchTerms[0] + " on the map, please contact the developer");
 				}
-		});}, i*1000);
-	};
+			}
+			setTimeout(geocode_next_place, t * 1000);
+		});
+	}
+	geocode_next_place();
 
 }
 
